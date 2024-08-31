@@ -496,7 +496,7 @@ cp $Origin/LICENSE .
 cp $Origin/README.md .
 mv ./bin/nano.exe .
 mv ./share/doc/nano/* .
-mv $Base/nano/doc/sample.nanorc.in .nanorc
+mv $Origin/nano/doc/sample.nanorc.in .nanorc
 mv ./share/nano syntax
 rm -rf ./bin/ ./share/ ./rnano*
 
