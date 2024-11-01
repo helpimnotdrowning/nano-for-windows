@@ -27,6 +27,7 @@ nano-for-windows. If not, see <https://www.gnu.org/licenses/>.
 $PSNativeCommandUseErrorActionPreference = $true
 $Origin = pwd
 
+$ErrorActionPreference = "Stop"
 rm -rf $Origin/nano
 
 <##############################
@@ -35,8 +36,18 @@ Get sources & stuff
 
 ##############################>
 
-
-git clone git://git.savannah.gnu.org/nano.git --depth=1
+if ($env:NFW_NANO_BRANCH_OR_COMMIT) {
+	git clone git://git.savannah.gnu.org/nano.git
+	cd nano
+	git reset --hard $env:NFW_NANO_BRANCH_OR_COMMIT
+	cd ..
+	
+} else {
+	# latest
+	git clone git://git.savannah.gnu.org/nano.git
+	
+}
+	
 cd nano
 
 git clone https://github.com/Bill-Gray/PDCursesMod.git curses --depth=1
@@ -52,7 +63,7 @@ aclocal -I m4
 autoconf
 autoheader
 automake --add-missing
-
+$ErrorActionPreference = "Continue"
 
 
 <##############################
@@ -419,6 +430,8 @@ Configuring nano
 ##############################>
 
 cd $Origin # proj root
+$NfWCommit = git rev-parse --short HEAD
+
 $BuildTarget = "x86_64-w64-mingw32"
 $OutDir = "$Origin/nano/pkg"
 $CursesDir = "$Origin/nano/curses"
@@ -431,6 +444,8 @@ $env:LIBS = "-lbcrypt"
 
 mkdir -p "$Origin/nano/build"
 cd $Origin/nano
+
+$NanoDes = (git describe)
 
 $EnableFeatures  = "utf8", "threads=windows" | % { "--enable-$_" }
 $DisableFeatures = "nls", "speller" | % { "--disable-$_" }
@@ -456,19 +471,9 @@ gci
 # NEED_PRINTF_UNBOUNDED_PRECISION
 Edit-FileByLine -SearchType Regex -Pattern ".*NEED_PRINTF_(DIRECTIVE_[AF]|FLAG_(GROUPING|ZERO)|INFINITE_DOUBLE|UNBOUNDED_PRECISION).*" -Replacement "" -Path build/config.h
 
-
-# this is only because nano is a shallow clone (no history) and we cant just get
-# the latest tag name like how it expects; we get it manually
-$NanoTag = (git ls-remote --tags --exit-code --refs "git://git.savannah.gnu.org/nano.git" |
-		select -Last 1 | grep -oP ".*refs/tags/\K.*" ) # match "<hash> refs/tags/" and throws it away, then keeps real tag name afterwards
-$NanoCommit = git rev-parse --short HEAD
-
-cd ..
-$NfWCommit = git rev-parse --short HEAD
-cd -
 $Date = Get-Date -AsUTC -Format yyyy-MM-dd
-$Branding = "GNU nano $NanoTag @ $NanoCommit + nano-for-windows @ $NfWCommit ($Date)"
-"#define REVISION `"$Branding`"" > src/revision.h
+$Branding = "GNU nano $NanoDes + nano-for-windows @ $NfWCommit ($Date)"
+"#define REVISION `"$Branding`" //" > src/revision.h
 
 
 
@@ -505,8 +510,8 @@ upx --lzma --best nano.exe
 gci -force
 
 # tar -cvf "nano-for-windows-g$NfWCommit-x86_64-g$NanoTag-$NanoCommit.tar" (ls *).Name .nanorc
-zip -r "nano-for-windows-$NfWCommit-x86_64-$NanoTag-$NanoCommit.zip" (ls *).Name .nanorc
+zip -r "nano-for-windows-$NfWCommit-x86_64-$NanoDesc.zip" (ls *).Name .nanorc
 
 cd $Origin
 
-Write-Host "`n`nFinished! Release ZIP is available in > nano/pkg/nano-for-windows-$NfWCommit-x86_64-$NanoTag-$NanoCommit.zip <`n"
+Write-Host "`n`nFinished! Release ZIP is available in > nano/pkg/nano-for-windows-$NfWCommit-x86_64-$NanoDesc.zip <`n"
